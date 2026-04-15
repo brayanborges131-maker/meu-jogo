@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Block Blast - Brayan07</title>
+
+<style>
+body {
+  margin: 0;
+  background: radial-gradient(circle, #0a0a1a, #000);
+  font-family: Arial;
+  color: white;
+  text-align: center;
+  touch-action: none;
+}
+
+/* 🔥 TELA INICIAL */
+#startScreen {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: black;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+#startScreen button {
+  padding: 15px 30px;
+  font-size: 18px;
+  background: cyan;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+h1 {
+  color: cyan;
+  text-shadow: 0 0 10px cyan;
+}
+
+#board {
+  width: 300px;
+  height: 300px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(10, 30px);
+  grid-template-rows: repeat(10, 30px);
+  gap: 1px;
+  box-shadow: 0 0 25px cyan;
+}
+
+.cell {
+  width: 30px;
+  height: 30px;
+  background: #222;
+  border: 1px solid #333;
+  transition: 0.1s;
+}
+
+.fill {
+  background: linear-gradient(45deg, cyan, blue);
+}
+
+#pieces {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  gap: 10px;
+}
+
+.piece {
+  display: grid;
+  cursor: pointer;
+}
+
+.block {
+  width: 20px;
+  height: 20px;
+  background: lime;
+  margin: 1px;
+}
+
+button {
+  padding: 8px;
+  margin: 5px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+#pause { background: orange; }
+#resume { background: lime; }
+#restart { background: red; color: white; }
+
+/* ✨ efeito linha */
+.flash {
+  animation: flash 0.3s;
+}
+
+@keyframes flash {
+  0% { background: white; }
+  100% { background: cyan; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- 🔥 TELA INICIAL -->
+<div id="startScreen">
+  <h1>BLOCK BLAST</h1>
+  <p>Criado por Brayan07</p>
+  <button onclick="startGame()">JOGAR</button>
+</div>
+
+<h1>BLOCK BLAST - BRAYAN07</h1>
+
+<div>
+Score: <span id="score">0</span> |
+Recorde: <span id="record">0</span> |
+Nível: <span id="level">Fácil</span>
+</div>
+
+<br>
+
+<button id="pause">Pause</button>
+<button id="resume">Continuar</button>
+<button id="restart">Restart</button>
+
+<div id="board"></div>
+<div id="pieces"></div>
+
+<!-- SONS -->
+<audio id="placeSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8b6c1f1a7.mp3"></audio>
+<audio id="clearSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_8c8d2d2b6f.mp3"></audio>
+<audio id="clickSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3c2b5a.mp3"></audio>
+
+<script>
+
+const board = document.getElementById("board");
+const piecesDiv = document.getElementById("pieces");
+
+let score = 0;
+let record = localStorage.getItem("record") || 0;
+document.getElementById("record").innerText = record;
+
+let paused = false;
+let selectedPiece = null;
+let selectedElement = null;
+
+let pieces = [];
+let cells = [];
+
+// 🚀 START GAME
+function startGame(){
+  document.getElementById("startScreen").style.display = "none";
+  createPieces();
+}
+
+// TABULEIRO
+for(let i=0;i<100;i++){
+  let div = document.createElement("div");
+  div.classList.add("cell");
+  board.appendChild(div);
+  cells.push(div);
+}
+
+// PEÇAS
+const shapes = [
+  [[1,1],[1,1]],
+  [[1,1,1]],
+  [[1],[1],[1]],
+  [[1,1,1],[0,1,0]],
+  [[1,1,1,1]],
+  [[1],[1],[1],[1]]
+];
+
+// CRIA PEÇAS
+function createPieces(){
+  piecesDiv.innerHTML = "";
+  pieces = [];
+
+  for(let i=0;i<3;i++){
+    let shape = shapes[Math.floor(Math.random()*shapes.length)];
+    pieces.push(shape);
+
+    let piece = document.createElement("div");
+    piece.classList.add("piece");
+    piece.style.gridTemplateColumns = `repeat(${shape[0].length}, 20px)`;
+
+    shape.forEach(r=>{
+      r.forEach(v=>{
+        let b = document.createElement("div");
+        if(v) b.classList.add("block");
+        piece.appendChild(b);
+      });
+    });
+
+    piece.addEventListener("pointerdown", ()=>{
+      selectedPiece = shape;
+      selectedElement = piece;
+      clickSound.play();
+    });
+
+    piecesDiv.appendChild(piece);
+  }
+}
+
+// CHECAR
+function canPlace(piece,row,col){
+  for(let y=0;y<piece.length;y++){
+    for(let x=0;x<piece[y].length;x++){
+      if(piece[y][x]){
+        let r = row+y;
+        let c = col+x;
+
+        if(r>=10 || c>=10) return false;
+
+        let i = r*10+c;
+        if(cells[i].classList.contains("fill")) return false;
+      }
+    }
+  }
+  return true;
+}
+
+// GAME OVER
+function canPlayAnyMove(){
+  for(let p of pieces){
+    for(let r=0;r<10;r++){
+      for(let c=0;c<10;c++){
+        if(canPlace(p,r,c)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// COLOCAR
+board.addEventListener("pointerup",(e)=>{
+
+  if(paused || !selectedPiece) return;
+
+  let el = document.elementFromPoint(e.clientX,e.clientY);
+  let index = [...cells].indexOf(el);
+  if(index === -1) return;
+
+  let row = Math.floor(index/10);
+  let col = index%10;
+
+  if(!canPlace(selectedPiece,row,col)) return;
+
+  for(let y=0;y<selectedPiece.length;y++){
+    for(let x=0;x<selectedPiece[y].length;x++){
+      if(selectedPiece[y][x]){
+        let i = (row+y)*10+(col+x);
+        cells[i].classList.add("fill");
+      }
+    }
+  }
+
+  placeSound.play();
+
+  score++;
+  document.getElementById("score").innerText = score;
+
+  if(score > record){
+    record = score;
+    localStorage.setItem("record", record);
+    alert("🏆 NOVO RECORDE!");
+    document.getElementById("record").innerText = record;
+  }
+
+  if(selectedElement){
+    selectedElement.remove();
+    selectedElement = null;
+  }
+
+  selectedPiece = null;
+
+  checkLines();
+  updateLevel();
+
+  if(piecesDiv.children.length === 0){
+    createPieces();
+  }
+
+  if(!canPlayAnyMove()){
+    setTimeout(()=>{
+      alert("💀 GAME OVER");
+      location.reload();
+    },200);
+  }
+});
+
+// LINHAS
+function checkLines(){
+  for(let r=0;r<10;r++){
+    let row = [];
+    for(let c=0;c<10;c++){
+      row.push(cells[r*10+c]);
+    }
+
+    if(row.every(c=>c.classList.contains("fill"))){
+      row.forEach(c=>{
+        c.classList.remove("fill");
+        c.classList.add("flash");
+        setTimeout(()=>c.classList.remove("flash"),300);
+      });
+
+      score += 10;
+      clearSound.play();
+    }
+  }
+}
+
+// NÍVEL
+function updateLevel(){
+  let level = "Fácil";
+  if(score > 90) level = "Médio";
+  if(score > 140) level = "Difícil";
+  document.getElementById("level").innerText = level;
+}
+
+// BOTÕES
+document.getElementById("pause").onclick = ()=> paused = true;
+document.getElementById("resume").onclick = ()=> paused = false;
+document.getElementById("restart").onclick = ()=> location.reload();
+
+</script>
+</body>
+</html>
